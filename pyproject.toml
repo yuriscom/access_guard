@@ -1,0 +1,20 @@
+[tool.poetry]
+name = "access-guard"
+version = "0.1.0"
+description = "A framework-agnostic IAM library with pluggable permission adapters"
+authors = ["Yuri Skomorovsky <yuriscom@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+packages = [{ include = "access_guard", from = "src" }]
+
+[tool.poetry.dependencies]
+python = ">=3.12"
+casbin = ">=1.0.0"
+sqlalchemy = ">=1.4.0"
+
+[tool.poetry.extras]
+fastapi = ["fastapi"]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
