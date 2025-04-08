@@ -1,17 +1,21 @@
-from typing import List, Union, ClassVar, Optional
-from casbin import Enforcer, Model
 import logging
+from pathlib import Path
+from typing import List, Union, ClassVar, Optional
+
+import casbin
+from casbin import Model
+from sqlalchemy.engine import Engine
+
+from .casbin_database_adapter import CasbinDatabaseAdapter
+from .casbin_adapter_params import CasbinAdapterParams
+
 from ..exceptions import PermissionDeniedError
 from ..permission_adapter_abc import PermissionAdapter
-import casbin
-from .casbin_database_adapter import CasbinDatabaseAdapter
-from sqlalchemy.engine import Engine
-from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 # Get the path to the model file relative to this module
-MODEL_PATH = Path(__file__).parent / "config" / "rbac_model.conf"
+DEFAULT_MODEL_PATH = Path(__file__).parent / "config" / "rbac_model.conf"
 
 
 class CasbinPermissions(PermissionAdapter):
@@ -19,32 +23,36 @@ class CasbinPermissions(PermissionAdapter):
     _model = None
     _enforcer = None
     _engine = None
+    _params = None
 
-    def __new__(cls, engine: Engine = None):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
-    def __init__(self, engine: Engine = None):
+    def __init__(self, engine: Engine = None, params: Optional[CasbinAdapterParams] = None):
         if self._enforcer is not None:
-            return  # already initialized
+            return
         if engine is None:
             raise ValueError("Engine must be provided for first initialization")
         self._engine = engine
+        self._params = params
         self._initialize_enforcer()
 
     @classmethod
-    def get_instance(cls, engine: Engine = None) -> 'CasbinPermissions':
+    def get_instance(cls, engine: Engine = None, params: Optional[CasbinAdapterParams] = None) -> 'CasbinPermissions':
         if cls._instance is None:
             if engine is None:
                 raise ValueError("Engine is required to create the singleton instance")
-            cls._instance = cls(engine)
+            cls._instance = cls(engine, params)
         return cls._instance
 
     def _initialize_enforcer(self):
         adapter = CasbinDatabaseAdapter(self._engine)
         model = Model()
-        model.load_model(MODEL_PATH)
+        # model_path = Path(self._params.rbac_model_path) if self._params and self._params.rbac_model_path else DEFAULT_MODEL_PATH
+
+        if self._params and self._params.rbac_model_path:
+            model_path = Path(self._params.rbac_model_path)
+        else:
+            model_path = DEFAULT_MODEL_PATH
+
+        model.load_model(model_path)
         self._enforcer = casbin.Enforcer(model, adapter)
         self._model = model
 
