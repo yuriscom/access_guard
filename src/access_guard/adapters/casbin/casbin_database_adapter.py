@@ -1,13 +1,12 @@
 import logging
 from typing import List, Optional, Union
 
+from access_guard.adapters.entities import Role, User
 from casbin import persist
 from casbin.model import Model
 from casbin.persist import Adapter
 from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker
-
-from fastapi_casbin.models import IAMRole, User
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
@@ -20,32 +19,34 @@ class CasbinDatabaseAdapter(Adapter):
         self._subject = None
         self.skip_load_all = skip_load_all
 
-    def load_policy(self, model: Model, subject: Optional[Union[User, IAMRole]] = None) -> None:
+    def load_policy(self, model: Model, entity: Optional[Union[User, Role]] = None) -> None:
         """
         Load policy rules from database.
         If subject is provided, loads policies for that specific subject (User or Role).
         If no subject is provided (Casbin's default call), loads all policies.
         """
         # Skip loading all policies if the flag is set
-        if not subject and self.skip_load_all:
+        if not entity and self.skip_load_all:
             logger.debug("Skipping loading all policies")
             return
 
-        if subject:
+        if entity:
             # Get the actual class names for comparison
-            subject_class = subject.__class__.__name__
-            if subject_class == "User":
-                logger.debug(f"Loading policies for User: {subject.name}")
+            # subject_class = entity.__class__.__name__
+            # if subject_class == "User":
+            if isinstance(entity, User):
+                logger.debug(f"Loading policies for User: {entity.id}")
                 query = self._get_user_policy_query()
-                params = {"user_id": subject.id}
+                params = {"user_id": entity.id}
 
-            elif subject_class == "IAMRole":
-                logger.debug(f"Loading policies for Role: {subject.role_name}")
+            # elif subject_class == "Role":
+            elif isinstance(entity, Role):
+                logger.debug(f"Loading policies for Role: {entity.role_name}")
                 query = self._get_role_policy_query()
-                params = {"role_id": subject.id}
+                params = {"role_id": entity.id}
 
             else:
-                logger.warning(f"Unsupported subject type: {subject_class}")
+                logger.warning(f"Unsupported subject type: {entity.__class__.__name__}")
                 return
 
             # Execute query and load policies into Casbin model
