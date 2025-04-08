@@ -1,33 +1,55 @@
-# Permission Adapter
+# Access Guard
 
-A framework-agnostic permission adapter with Casbin implementation.
+A framework-agnostic IAM library with Casbin-based permission adapter.
 
-## Installation
+## Installation (Local Development)
 
-```bash
-pip install permission-adapter
-```
+This library is intended to be consumed as a local or Git-based dependency in your application.
 
-For FastAPI integration:
+### Add as a local editable dependency (recommended for dev)
 
 ```bash
-pip install permission-adapter[fastapi]
+poetry add ../access-guard --editable
 ```
+
+This will install the package in editable mode and allow your application to reflect changes instantly.
+
+### Alternatively, use a Git URL (for production installs)
+
+```bash
+poetry add git+https://github.com/your-org/access-guard.git
+```
+
+## Configuration
+
+Access Guard does not enforce a specific configuration format. It is the responsibility of the application using the library to parse and pass the required configuration values.
+
+### Supported Configuration Options
+
+- `adapter_type` (str): Required. Indicates which permission adapter to use.  
+  - Currently supported: `"casbin"`
+
+- `rbac_model_path` (str, optional): Path to a custom Casbin model configuration file.  
+  - If not provided, Access Guard will use its built-in default model.
+
+More configuration options will be supported as the library evolves.
 
 ## Usage
 
-### Basic Usage
+### Creating the permission adapter
 
 ```python
 from sqlalchemy import create_engine
-from permission_adapter.adapters.factory import create_permission_adapter
+from access_guard.adapters.factory import get_permission_adapter
 
-# Create a database engine
-engine = create_engine("sqlite:///permissions.db")
+# Example usage
+engine = create_engine(database_url)
+permissions = get_permission_adapter(adapter_type, engine)
+```
 
-# Create a permission adapter
-permissions = create_permission_adapter(engine)
+### Checking permissions
 
+```python
 # Check if a user has permission
 has_access = permissions.has_permission("user1", "resource1", "read")
 
@@ -35,34 +57,28 @@ has_access = permissions.has_permission("user1", "resource1", "read")
 permissions.require_permission("user1", "resource1", "write")
 ```
 
-### FastAPI Integration
+## Adapter Support
+
+Currently supported:
+- Casbin
+
+The system is extensible with a pluggable adapter architecture. You can add your own adapter by implementing the `PermissionAdapter` interface and registering it in the factory.
+
+## FastAPI Integration
+
+Access Guard is framework-agnostic. You may choose to use it within FastAPI or any other web framework by injecting the permission adapter wherever needed.
+
+For example, in FastAPI, you can create a dependency wrapper:
 
 ```python
-from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy.orm import Session
-from permission_adapter.adapters.exceptions import PermissionDeniedError
-from permission_adapter.adapters.factory import get_permission_adapter
+from fastapi import Depends, HTTPException
+from access_guard.adapters.exceptions import PermissionDeniedError
 
-app = FastAPI()
-
-# Dependency to get the permission adapter
-def get_permissions():
-    engine = create_engine("sqlite:///permissions.db")
-    return get_permission_adapter(engine=engine)
-
-@app.get("/resource/{resource_id}")
-async def get_resource(resource_id: str, user_id: int, permissions = Depends(get_permissions)):
-    try:
-        # Check permission
-        permissions.require_permission(f"user_{user_id}", f"resource_{resource_id}", "read")
-        
-        # If we get here, the user has permission
-        return {"resource_id": resource_id, "data": "resource data"}
-    except PermissionDeniedError as e:
-        # Convert to HTTP exception
-        raise HTTPException(status_code=403, detail=str(e))
+def require_permission(subject: str, resource: str, action: str):
+    def checker():
+        try:
+            permissions.require_permission(subject, resource, action)
+        except PermissionDeniedError:
+            raise HTTPException(status_code=403, detail="Permission denied")
+    return checker
 ```
-
-## License
-
-MIT
