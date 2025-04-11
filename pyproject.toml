@@ -11,6 +11,8 @@ packages = [{ include = "access_guard", from = "src" }]
 python = ">=3.12"
 casbin = ">=1.0.0"
 sqlalchemy = ">=1.4.0"
+httpx = "^0.27.0"
+requests = "^2.32.3"
 
 [tool.poetry.extras]
 fastapi = ["fastapi"]
