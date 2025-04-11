@@ -1,25 +1,35 @@
 import logging
 from typing import List, Optional, Union
 
-from access_guard.adapters.entities import Role, User
 from casbin import persist
 from casbin.model import Model
-from casbin.persist import Adapter
 from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker
+
+from access_guard.adapters.entities import Role, User
+from .casbin_adapter_abc import CasbinAdapterABC
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
-class CasbinDatabaseAdapter(Adapter):
+class CasbinDatabaseAdapter(CasbinAdapterABC):
     def __init__(self, engine, skip_load_all: bool = False):
+        super().__init__()
         self.engine = engine
         self.Session = sessionmaker(bind=engine)
         self._subject = None
         self.skip_load_all = skip_load_all
 
-    def load_policy(self, model: Model, entity: Optional[Union[User, Role]] = None) -> None:
+    def set_filtered(self, is_filtered: bool = True):
+        self._is_filtered = is_filtered
+
+    def is_filtered(self) -> bool:
+        return getattr(self, "_is_filtered", False)
+
+    def load_policy(self, model: Model,
+                    entity: Optional[Union[User, Role]] = None,
+                    filter: Optional[dict] = None) -> None:
         """
         Load policy rules from database.
         If subject is provided, loads policies for that specific subject (User or Role).
@@ -51,6 +61,15 @@ class CasbinDatabaseAdapter(Adapter):
 
             # Execute query and load policies into Casbin model
             self._run_load_policy(query, params, model)
+        elif filter:
+            assert "scope" in filter and "app_id" in filter, "Filter must include 'scope' and 'app_id'"
+            self._is_filtered = True
+            query = self._get_filtered_policies_query()
+            params = {
+                "scope": filter["scope"],
+                "app_id": filter["app_id"],
+            }
+            self._run_load_policy(query, params, model)
         else:
             # Casbin's default call - load all policies
             logger.debug("Loading all policies...")
@@ -80,6 +99,54 @@ class CasbinDatabaseAdapter(Adapter):
             logger.exception(e)  # This will print the full stack trace
         finally:
             session.close()
+
+    def _get_filtered_policies_query(self) -> str:
+        return """
+        WITH role_permissions AS (
+            SELECT DISTINCT
+                'p' AS ptype,
+                r.scope || ':' || COALESCE(r.app_id::text, '') || ':' || r.role_name AS subject,
+                res.scope || ':' || COALESCE(res.app_id::text, '') || ':' || res.resource_name AS object,
+                perm.action AS action,
+                COALESCE(rp.effect, 'allow') AS effect
+            FROM iam_role_policies rp
+            JOIN iam_roles r ON rp.role_id = r.id
+            JOIN iam_permissions perm ON rp.permission_id = perm.id
+            JOIN iam_resources res ON perm.resource_id = res.id
+            WHERE r.scope = :scope AND (:app_id IS NULL OR r.app_id = :app_id)
+            AND res.scope = :scope AND (:app_id IS NULL OR res.app_id = :app_id)
+        ),
+        user_permissions AS (
+            SELECT DISTINCT
+                'p' AS ptype,
+                u.name AS subject,
+                res.scope || ':' || COALESCE(res.app_id::text, '') || ':' || res.resource_name AS object,
+                perm.action AS action,
+                COALESCE(up.effect, 'allow') AS effect
+            FROM iam_user_policies up
+            JOIN users u ON up.user_id = u.id
+            JOIN iam_permissions perm ON up.permission_id = perm.id
+            JOIN iam_resources res ON perm.resource_id = res.id
+            WHERE res.scope = :scope AND (:app_id IS NULL OR res.app_id = :app_id)
+        ),
+        user_roles AS (
+            SELECT DISTINCT
+                'g' AS ptype,
+                u.name AS subject,
+                r.scope || ':' || COALESCE(r.app_id::text, '') || ':' || r.role_name AS object,
+                NULL AS action,
+                NULL AS effect
+            FROM user_roles ur
+            JOIN users u ON ur.user_id = u.id
+            JOIN iam_roles r ON ur.role_id = r.id
+            WHERE r.scope = :scope AND (:app_id IS NULL OR r.app_id = :app_id)
+        )
+        SELECT ptype, subject, object, action, effect FROM role_permissions
+        UNION ALL
+        SELECT ptype, subject, object, action, effect FROM user_permissions
+        UNION ALL
+        SELECT ptype, subject, object, action, effect FROM user_roles
+        """
 
     def _get_all_policies_query(self) -> str:
         """Get query for loading all policies from the database."""

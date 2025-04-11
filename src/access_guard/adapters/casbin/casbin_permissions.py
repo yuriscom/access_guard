@@ -6,6 +6,7 @@ import casbin
 from casbin import Model
 from sqlalchemy.engine import Engine
 
+from .casbin_adapter_factory import get_adapter
 from .casbin_database_adapter import CasbinDatabaseAdapter
 from .casbin_adapter_params import CasbinAdapterParams
 
@@ -25,25 +26,25 @@ class CasbinPermissions(PermissionAdapter):
     _engine = None
     _params = None
 
-    def __init__(self, engine: Engine = None, params: Optional[CasbinAdapterParams] = None):
+    def __init__(self, params: CasbinAdapterParams):
         if self._enforcer is not None:
             return
-        if engine is None:
-            raise ValueError("Engine must be provided for first initialization")
-        self._engine = engine
+
+        params.validate()
         self._params = params
         self._initialize_enforcer()
 
     @classmethod
-    def get_instance(cls, engine: Engine = None, params: Optional[CasbinAdapterParams] = None) -> 'CasbinPermissions':
+    def get_instance(cls, params: CasbinAdapterParams) -> 'CasbinPermissions':
         if cls._instance is None:
-            if engine is None:
-                raise ValueError("Engine is required to create the singleton instance")
-            cls._instance = cls(engine, params)
+            # if engine is None:
+            #     raise ValueError("Engine is required to create the singleton instance")
+            cls._instance = cls(params)
         return cls._instance
 
     def _initialize_enforcer(self):
-        adapter = CasbinDatabaseAdapter(self._engine)
+        adapter = get_adapter(self._params)
+        adapter.set_filtered(True)
         model = Model()
         # model_path = Path(self._params.rbac_model_path) if self._params and self._params.rbac_model_path else DEFAULT_MODEL_PATH
 
@@ -54,6 +55,17 @@ class CasbinPermissions(PermissionAdapter):
 
         model.load_model(model_path)
         self._enforcer = casbin.Enforcer(model, adapter)
+
+        # Safely extract parameters with defaults
+        scope = getattr(self._params, 'scope', 'SMC')
+        app_id = getattr(self._params, 'app_id', None)
+        user_id = getattr(self._params, 'user_id', None)
+
+        self._enforcer.adapter.load_policy(model, filter = {
+            "scope": scope,
+            "app_id": app_id,
+            "user_id": user_id
+        })
         self._model = model
 
     @property

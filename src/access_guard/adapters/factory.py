@@ -34,9 +34,12 @@ def get_permission_adapter(
         adapter_params = _build_adapter_params(adapter_type, settings)
 
     if adapter_type == PermissionAdapterType.CASBIN:
-        if isinstance(adapter_params, CasbinAdapterParams):
-            return CasbinPermissions.get_instance(engine, adapter_params)
-        return CasbinPermissions.get_instance(engine)
+        if not isinstance(adapter_params, CasbinAdapterParams):
+            raise ValueError(f"Unknown params type for adapter: {adapter_type}")
+
+        adapter_params.engine = engine
+        return CasbinPermissions.get_instance(adapter_params)
+
 
     raise ValueError(f"Unknown adapter type: {adapter_type}")
 
@@ -44,6 +47,10 @@ def get_permission_adapter(
 def _build_adapter_params(adapter_type: PermissionAdapterType, settings) -> Optional[AdapterParams]:
     if adapter_type == PermissionAdapterType.CASBIN:
         return CasbinAdapterParams(
-            rbac_model_path=settings.rbac_model_path
+            rbac_model_path=getattr(settings, 'rbac_model_path', None),
+            casbin_adapter_type=getattr(settings, 'casbin_adapter', None),
+            access_api_url=getattr(settings, 'access_api_url', None),
+            access_api_client=getattr(settings, 'access_api_client', None),
+            access_api_secret=getattr(settings, 'access_api_secret', None)
         )
     return None
