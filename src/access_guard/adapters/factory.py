@@ -51,6 +51,9 @@ def _build_adapter_params(adapter_type: PermissionAdapterType, settings) -> Opti
             casbin_adapter_type=getattr(settings, 'casbin_adapter', None),
             access_api_url=getattr(settings, 'access_api_url', None),
             access_api_client=getattr(settings, 'access_api_client', None),
-            access_api_secret=getattr(settings, 'access_api_secret', None)
+            access_api_secret=getattr(settings, 'access_api_secret', None),
+            scope=getattr(settings, 'access_api_scope', None),
+            user_id=getattr(settings, 'access_api_userid', None),
+            app_id=getattr(settings, 'access_api_appid', None),
         )
     return None

@@ -15,6 +15,11 @@ class CasbinAdapterParams(AdapterParams):
     access_api_client: Optional[str] = None
     access_api_secret: Optional[str] = None
 
+    ### temp
+    user_id: Optional[str] = None
+    scope: Optional[str] = None
+    app_id: Optional[str] = None
+
     class Config:
         arbitrary_types_allowed = True
 
