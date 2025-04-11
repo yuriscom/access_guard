@@ -28,8 +28,8 @@ class CasbinDatabaseAdapter(CasbinAdapterABC):
         return getattr(self, "_is_filtered", False)
 
     def load_policy(self, model: Model,
-                    entity: Optional[Union[User, Role]] = None,
-                    filter: Optional[dict] = None) -> None:
+                    entity: Optional[Union[User, Role]] = None
+                    ) -> None:
         """
         Load policy rules from database.
         If subject is provided, loads policies for that specific subject (User or Role).
@@ -61,14 +61,17 @@ class CasbinDatabaseAdapter(CasbinAdapterABC):
 
             # Execute query and load policies into Casbin model
             self._run_load_policy(query, params, model)
-        elif filter:
-            assert "scope" in filter and "app_id" in filter, "Filter must include 'scope' and 'app_id'"
-            self._is_filtered = True
+        elif self.is_filtered():
+            # assert "scope" in filter and "app_id" in filter, "Filter must include 'scope' and 'app_id'"
+            # self._is_filtered = True
             query = self._get_filtered_policies_query()
+
+            ### TODO: Move to config
             params = {
-                "scope": filter["scope"],
-                "app_id": filter["app_id"],
+                "scope": 'SMC',
+                "app_id": None,
             }
+
             self._run_load_policy(query, params, model)
         else:
             # Casbin's default call - load all policies

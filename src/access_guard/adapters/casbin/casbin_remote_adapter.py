@@ -26,17 +26,17 @@ class CasbinRemoteAdapter(CasbinAdapterABC):
     def set_filtered(self, is_filtered: bool = True):
         self._is_filtered = is_filtered
 
-    def load_policy(self, model: Model,
-                    filter: Optional[dict] = None) -> None:
+    def load_policy(self, model: Model) -> None:
 
         self.set_filtered(True)
 
+        ### TODO: should be replaced by bearer token, this should be added by API Gateway
         headers = {
             # "Authorization": f"Bearer {self.api_token}",
             "Accept": "application/json",
-            "app_id": str(filter["app_id"]),
-            "user_id": str(filter["user_id"]),
-            "scope": filter["scope"]
+            "app_id": "1",
+            "user_id": "3",
+            "scope": "APP"
         }
 
         try:

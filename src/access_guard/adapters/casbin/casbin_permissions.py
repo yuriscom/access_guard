@@ -4,12 +4,10 @@ from typing import List, Union, ClassVar, Optional
 
 import casbin
 from casbin import Model
-from sqlalchemy.engine import Engine
 
 from .casbin_adapter_factory import get_adapter
-from .casbin_database_adapter import CasbinDatabaseAdapter
 from .casbin_adapter_params import CasbinAdapterParams
-
+from .casbin_database_adapter import CasbinDatabaseAdapter
 from ..exceptions import PermissionDeniedError
 from ..permission_adapter_abc import PermissionAdapter
 
@@ -56,16 +54,7 @@ class CasbinPermissions(PermissionAdapter):
         model.load_model(model_path)
         self._enforcer = casbin.Enforcer(model, adapter)
 
-        # Safely extract parameters with defaults
-        scope = getattr(self._params, 'scope', 'SMC')
-        app_id = getattr(self._params, 'app_id', None)
-        user_id = getattr(self._params, 'user_id', None)
-
-        self._enforcer.adapter.load_policy(model, filter = {
-            "scope": scope,
-            "app_id": app_id,
-            "user_id": user_id
-        })
+        self._enforcer.adapter.load_policy(model)
         self._model = model
 
     @property

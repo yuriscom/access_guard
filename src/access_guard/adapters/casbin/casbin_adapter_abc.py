@@ -15,5 +15,5 @@ class CasbinAdapterABC(Adapter, ABC):
         self._is_filtered = is_filtered
 
     @abstractmethod
-    def load_policy(self, model: Model, filter: Optional[dict] = None):
+    def load_policy(self, model: Model):
         pass
