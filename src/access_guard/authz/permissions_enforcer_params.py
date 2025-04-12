@@ -21,9 +21,3 @@ class PermissionsEnforcerParams(BaseModel):
 
     class Config:
         arbitrary_types_allowed = True
-
-    # @validator("casbin_adapter_type", pre=True, always=True)
-    # def default_if_none(cls, v):
-    #     if v is None:
-    #         return CasbinAdapterType.REMOTE
-    #     return v
