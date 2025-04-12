@@ -1,20 +1,20 @@
-from ..adapters.casbin.domain.adapter_type import CasbinAdapterType
-from ..adapters.pa_type import PermissionAdapterType
 import logging
+
+from ..authz.enums import PolicyLoaderType, PermissionsAdapterType
 
 logger = logging.getLogger(__name__)
 
-def parse_adapter_type(value: str) -> PermissionAdapterType:
+def parse_adapter_type(value: str) -> PermissionsAdapterType:
     try:
-        return PermissionAdapterType(value.lower())
+        return PermissionsAdapterType(value.lower())
     except ValueError:
         logger.warning(f"Unknown adapter type '{value}', defaulting to 'casbin'")
-        return PermissionAdapterType.CASBIN
+        return PermissionsAdapterType.CASBIN
 
 
-def parse_casbin_adapter_type(value: str) -> CasbinAdapterType:
+def parse_policy_loader_type(value: str) -> PolicyLoaderType:
     try:
-        return CasbinAdapterType(value.lower())
+        return PolicyLoaderType(value.lower())
     except ValueError:
         logger.warning(f"Unknown adapter type '{value}', defaulting to 'remote'")
-        return CasbinAdapterType.REMOTE
+        return PolicyLoaderType.REMOTE
