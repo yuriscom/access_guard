@@ -116,7 +116,7 @@ class PolicyDbLoader(PolicyLoaderABC):
         user_permissions AS (
             SELECT DISTINCT
                 'p' AS ptype,
-                u.name AS subject,
+                u.id::text AS subject,
                 res.scope || ':' || COALESCE(res.app_id::text, '') || ':' || res.resource_name AS object,
                 perm.action AS action,
                 COALESCE(up.effect, 'allow') AS effect
@@ -129,7 +129,7 @@ class PolicyDbLoader(PolicyLoaderABC):
         user_roles AS (
             SELECT DISTINCT
                 'g' AS ptype,
-                u.name AS subject,
+                u.id::text AS subject,
                 r.scope || ':' || COALESCE(r.app_id::text, '') || ':' || r.role_name AS object,
                 NULL AS action,
                 NULL AS effect
@@ -166,7 +166,7 @@ user_permissions AS (
     -- User-specific policies
     SELECT DISTINCT
         'p' AS ptype,                                           -- User-permission policy
-        u.name AS subject,                                      -- User directly as subject
+        u.id::text AS subject,                                      -- User directly as subject
         res.scope || ':' || COALESCE(res.app_id::text, '') || ':' || res.resource_name AS object,
         perm.action AS action,                                  -- Action (read, write, etc.)
         COALESCE(up.effect, 'allow') AS effect                  -- Allow/Deny
@@ -179,7 +179,7 @@ user_roles AS (
     -- User-to-role mappings
     SELECT DISTINCT
         'g' AS ptype,                                           -- User-role mapping
-        u.name AS subject,                                      -- User as subject
+        u.id::text AS subject,                                      -- User as subject
         r.scope || ':' || COALESCE(r.app_id::text, '') || ':' || r.role_name AS object,
         NULL AS action,                                         -- No action for "g" rules
         NULL AS effect                                          -- No effect for "g" rules
@@ -246,7 +246,7 @@ user_permissions AS (
     -- Get direct user-specific permissions
     SELECT 
         'p' AS ptype,                                           -- Casbin policy type: allow/deny
-        u.name AS subject,                                      -- User as Casbin subject
+        u.id::text AS subject,                                      -- User as Casbin subject
         res.scope || ':' || COALESCE(res.app_id::text, '') || ':' || res.resource_name AS object,
         perm.action AS action,                                  -- Action
         COALESCE(up.effect, 'allow') AS effect                  -- Allow/Deny
@@ -260,7 +260,7 @@ user_roles_mappings AS (
     -- Map user to roles for Casbin "g" rules
     SELECT 
         'g' AS ptype,                                           -- Casbin group rule
-        u.name AS subject,                                      -- User as Casbin subject
+        u.id::text AS subject,                                      -- User as Casbin subject
         ur.role_name AS object,                                 -- Role as Casbin object
         NULL AS action,                                         -- No action for "g" rules
         NULL AS effect                                          -- No effect for "g" rules

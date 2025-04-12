@@ -1,3 +1,4 @@
+
 import logging
 from pathlib import Path
 from typing import List, Union, Optional, ClassVar
@@ -5,7 +6,7 @@ from typing import List, Union, Optional, ClassVar
 import casbin
 from casbin import Model
 
-
+from access_guard.authz.entities import User
 from access_guard.authz.policy_loader_factory import get_policy_loader
 from access_guard.authz.exceptions import PermissionDeniedError
 from access_guard.authz.permissions_enforcer_params import PermissionsEnforcerParams
@@ -46,12 +47,22 @@ class PermissionsEnforcer:
 
         self._model = model
 
-    def has_permission(self, user: str, resource: str, actions: Union[str, List[str]]) -> bool:
+    def _qualify(self, name: str, is_role_or_resource: bool = True) -> str:
+        if not name:
+            return name
+        if is_role_or_resource and self._params.scope and self._params.app_id:
+            return f"{self._params.scope}:{self._params.app_id}:{name}"
+        return name
+
+    def has_permission(self, user: User, resource: str, actions: Union[str, List[str]]) -> bool:
         if isinstance(actions, str):
             actions = [actions]
-        return any(self._enforcer.enforce(user, resource, action) for action in actions)
 
-    def require_permission(self, user: str, resource: str, actions: Union[str, List[str]]) -> None:
+        qualified_resource = self._qualify(resource, is_role_or_resource=True)
+
+        return any(self._enforcer.enforce(str(user.id), qualified_resource, action) for action in actions)
+
+    def require_permission(self, user: User, resource: str, actions: Union[str, List[str]]) -> None:
         if not self.has_permission(user, resource, actions):
             actions_str = ", ".join(actions if isinstance(actions, list) else [actions])
-            raise PermissionDeniedError(user, resource, actions_str)
+            raise PermissionDeniedError(user.id, resource, actions_str)
