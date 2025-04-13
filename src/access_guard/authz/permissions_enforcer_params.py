@@ -1,7 +1,6 @@
-from typing import Optional
 
+from typing import Optional, Dict, Any
 from pydantic import BaseModel
-
 from access_guard.authz.enums import PolicyLoaderType
 
 
@@ -14,10 +13,8 @@ class PermissionsEnforcerParams(BaseModel):
     policy_api_client: Optional[str] = None
     policy_api_secret: Optional[str] = None
 
-    ### temp
-    scope: Optional[str] = None
-    app_id: Optional[str] = None
-    user_id: Optional[str] = None
+    # generic filter to be passed as-is to loaders
+    filter: Optional[Dict[str, Any]] = None
 
     class Config:
         arbitrary_types_allowed = True
