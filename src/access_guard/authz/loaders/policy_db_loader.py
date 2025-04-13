@@ -8,8 +8,8 @@ from sqlalchemy.orm import sessionmaker
 
 from access_guard.authz.models.entities import Role, User
 from access_guard.authz.models.load_policy_result import LoadPolicyResult
-from .poicy_query_provider import PolicyQueryProvider
-from .policy_loader_abc import PolicyLoaderABC
+from access_guard.authz.loaders.poicy_query_provider import PolicyQueryProvider
+from access_guard.authz.loaders.policy_loader_abc import PolicyLoaderABC
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)

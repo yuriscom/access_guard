@@ -1,6 +1,6 @@
 from access_guard.authz.permissions_enforcer import PermissionsEnforcer
-from access_guard.authz.permissions_enforcer_params import PermissionsEnforcerParams
-from access_guard.authz.poicy_query_provider import PolicyQueryProvider
+from access_guard.authz.models.permissions_enforcer_params import PermissionsEnforcerParams
+from access_guard.authz.loaders.poicy_query_provider import PolicyQueryProvider
 
 
 def _build_params(settings) -> PermissionsEnforcerParams:

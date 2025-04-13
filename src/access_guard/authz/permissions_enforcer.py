@@ -9,9 +9,9 @@ from casbin import Model
 from access_guard.authz.exceptions import PermissionDeniedError
 from access_guard.authz.models.entities import User
 from access_guard.authz.models.load_policy_result import LoadPolicyResult
-from access_guard.authz.permissions_enforcer_params import PermissionsEnforcerParams
-from access_guard.authz.poicy_query_provider import PolicyQueryProvider
-from access_guard.authz.policy_loader_factory import get_policy_loader
+from access_guard.authz.models.permissions_enforcer_params import PermissionsEnforcerParams
+from access_guard.authz.loaders.poicy_query_provider import PolicyQueryProvider
+from access_guard.authz.loaders.policy_loader_factory import get_policy_loader
 
 logger = logging.getLogger(__name__)
 

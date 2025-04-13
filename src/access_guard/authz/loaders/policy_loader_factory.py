@@ -1,8 +1,8 @@
 from access_guard.authz.models.enums import PolicyLoaderType
-from access_guard.authz.permissions_enforcer_params import PermissionsEnforcerParams
-from access_guard.authz.policy_api_loader import PolicyApiLoader
-from access_guard.authz.policy_db_loader import PolicyDbLoader
-from access_guard.authz.policy_loader_abc import PolicyLoaderABC
+from access_guard.authz.models.permissions_enforcer_params import PermissionsEnforcerParams
+from access_guard.authz.loaders.policy_api_loader import PolicyApiLoader
+from access_guard.authz.loaders.policy_db_loader import PolicyDbLoader
+from access_guard.authz.loaders.policy_loader_abc import PolicyLoaderABC
 
 
 def get_policy_loader(params: PermissionsEnforcerParams, engine=None, query_provider=None) -> PolicyLoaderABC:
