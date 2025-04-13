@@ -4,7 +4,7 @@ import requests
 from casbin import persist
 from casbin.model import Model
 
-from .load_policy_result import LoadPolicyResult
+from access_guard.authz.models.load_policy_result import LoadPolicyResult
 from .policy_loader_abc import PolicyLoaderABC
 
 logger = logging.getLogger(__name__)

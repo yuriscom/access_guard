@@ -6,8 +6,8 @@ from casbin.model import Model
 from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker
 
-from .entities import Role, User
-from .load_policy_result import LoadPolicyResult
+from access_guard.authz.models.entities import Role, User
+from access_guard.authz.models.load_policy_result import LoadPolicyResult
 from .poicy_query_provider import PolicyQueryProvider
 from .policy_loader_abc import PolicyLoaderABC
 

@@ -1,7 +1,9 @@
 
 from typing import Optional, Dict, Any
+
 from pydantic import BaseModel
-from access_guard.authz.enums import PolicyLoaderType
+
+from access_guard.authz.models.enums import PolicyLoaderType
 
 
 class PermissionsEnforcerParams(BaseModel):

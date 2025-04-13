@@ -6,12 +6,12 @@ from typing import List, Union, Optional, ClassVar
 import casbin
 from casbin import Model
 
-from access_guard.authz.entities import User
-from access_guard.authz.load_policy_result import LoadPolicyResult
+from access_guard.authz.exceptions import PermissionDeniedError
+from access_guard.authz.models.entities import User
+from access_guard.authz.models.load_policy_result import LoadPolicyResult
+from access_guard.authz.permissions_enforcer_params import PermissionsEnforcerParams
 from access_guard.authz.poicy_query_provider import PolicyQueryProvider
 from access_guard.authz.policy_loader_factory import get_policy_loader
-from access_guard.authz.exceptions import PermissionDeniedError
-from access_guard.authz.permissions_enforcer_params import PermissionsEnforcerParams
 
 logger = logging.getLogger(__name__)
 
@@ -60,14 +60,6 @@ class PermissionsEnforcer:
             actions = [actions]
 
         qualified_resource = f"{self._resource_prefix}{resource}" if self._resource_prefix else resource
-
-        logger.debug(
-            f"Enforcing for user: {user.id}, resource: {resource}, actions: {actions}, qualified_resource: {qualified_resource}")
-
-        for sec in ["p", "g"]:
-            for ptype, ast in self._model.model.get(sec, {}).items():
-                for rule in ast.policy:
-                    logger.debug(f"Loaded policy [{sec}] {ptype}: {rule}")
 
         return any(self._enforcer.enforce(str(user.id), qualified_resource, action) for action in actions)
 

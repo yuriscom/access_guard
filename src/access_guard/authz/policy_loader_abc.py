@@ -1,9 +1,10 @@
 
 from abc import ABC, abstractmethod
+
 from casbin.model import Model
 from casbin.persist import Adapter
 
-from access_guard.authz.load_policy_result import LoadPolicyResult
+from access_guard.authz.models.load_policy_result import LoadPolicyResult
 
 
 class PolicyLoaderABC(Adapter, ABC):

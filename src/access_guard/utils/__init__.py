@@ -1,6 +1,6 @@
 import logging
 
-from ..authz.enums import PolicyLoaderType, PermissionsAdapterType
+from access_guard.authz.models.enums import PolicyLoaderType, PermissionsAdapterType
 
 logger = logging.getLogger(__name__)
 
