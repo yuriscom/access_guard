@@ -1,6 +1,7 @@
+
 # Access Guard
 
-A framework-agnostic IAM library with Casbin-based permission adapter.
+A framework-agnostic IAM library with Casbin-based permission enforcer.
 
 ## Installation (Local Development)
 
@@ -12,8 +13,6 @@ This library is intended to be consumed as a local or Git-based dependency in yo
 poetry add ../access-guard --editable
 ```
 
-This will install the package in editable mode and allow your application to reflect changes instantly.
-
 ### Alternatively, use a Git URL (for production installs)
 
 ```bash
@@ -22,63 +21,90 @@ poetry add git+https://github.com/your-org/access-guard.git
 
 ## Configuration
 
-Access Guard does not enforce a specific configuration format. It is the responsibility of the application using the library to parse and pass the required configuration values.
+Access Guard is fully configurable through the `settings` object provided to the factory method.
 
-### Supported Configuration Options
+The settings can be a Pydantic model or a simple dictionary. 
 
-- `adapter_type` (str): Required. Indicates which permission adapter to use.  
-  - Currently supported: `"casbin"`
+### Required Settings
 
-- `rbac_model_path` (str, optional): Path to a custom Casbin model configuration file.  
-  - If not provided, Access Guard will use its built-in default model.
+| Field                | Description                                          | Required | Notes                                    |
+|---------------------|------------------------------------------------------|-----------|------------------------------------------|
+| policy_loader_type  | Source of policies: DB or REMOTE                    | Yes       | Enum: PolicyLoaderType.DB or REMOTE     |
+| rbac_model_path     | Path to Casbin model.conf                           | Optional  | Defaults to internal config if omitted  |
+| policy_api_url      | URL of Access Management API                        | Required for REMOTE loader | Only for API Loader |
+| policy_api_client   | API client ID                                       | Optional  | For remote API loader if applicable     |
+| policy_api_secret   | API client secret                                   | Optional  | For remote API loader if applicable     |
+| filter              | Dict containing filter parameters for policies      | Optional  | Fully agnostic structure                |
 
-More configuration options will be supported as the library evolves.
 
 ## Usage
 
-### Creating the permission adapter
+### Get Permissions Enforcer (Client Side)
 
 ```python
-from sqlalchemy import create_engine
-from access_guard.adapters.factory import get_permission_adapter
+from access_guard.authz.factory import get_permissions_enforcer
+from access_guard.authz.models.enums import PolicyLoaderType
+from access_guard.authz.models.permissions_enforcer_params import PermissionsEnforcerParams
 
-# Example usage
-engine = create_engine(database_url)
-permissions = get_permission_adapter(adapter_type, engine)
+params_dict = {
+    "policy_loader_type": PolicyLoaderType.REMOTE,
+    "rbac_model_path": "path/to/your/rbac_model.conf",
+    "policy_api_url": ...,
+    "policy_api_client": ...,
+    "policy_api_secret": ...
+}
+
+params = PermissionsEnforcerParams(**params_dict)
+
+enforcer = get_permissions_enforcer(
+    settings=params
+)
 ```
 
-### Checking permissions
+### Get Permissions Enforcer (Access Management Microservice Side)
 
 ```python
-# Check if a user has permission
-has_access = permissions.has_permission("user1", "resource1", "read")
+from access_guard.authz.factory import get_permissions_enforcer
+from access_guard.authz.models.enums import PolicyLoaderType
+from access_guard.authz.models.permissions_enforcer_params import PermissionsEnforcerParams
+from access_manager_api.providers.policy_query_provider import AccessManagementQueryProvider
 
-# Require permission (will raise PermissionDeniedError if not allowed)
-permissions.require_permission("user1", "resource1", "write")
+params_dict = {
+    "policy_loader_type": PolicyLoaderType.DB,
+    "rbac_model_path": "path/to/your/rbac_model.conf",
+    "filter": {
+        "policy_api_scope": "SMC",
+        "policy_api_appid": None
+    }
+}
+
+params = PermissionsEnforcerParams(**params_dict)
+
+enforcer = get_permissions_enforcer(
+    settings=params,
+    engine=get_engine(),
+    query_provider=AccessManagementQueryProvider()
+)
 ```
 
-## Adapter Support
 
-Currently supported:
-- Casbin
-
-The system is extensible with a pluggable adapter architecture. You can add your own adapter by implementing the `PermissionAdapter` interface and registering it in the factory.
-
-## FastAPI Integration
-
-Access Guard is framework-agnostic. You may choose to use it within FastAPI or any other web framework by injecting the permission adapter wherever needed.
-
-For example, in FastAPI, you can create a dependency wrapper:
+## Checking Permissions
 
 ```python
-from fastapi import Depends, HTTPException
-from access_guard.adapters.exceptions import PermissionDeniedError
-
-def require_permission(subject: str, resource: str, action: str):
-    def checker():
-        try:
-            permissions.require_permission(subject, resource, action)
-        except PermissionDeniedError:
-            raise HTTPException(status_code=403, detail="Permission denied")
-    return checker
+    try:
+        # Check permission using require_permission which will raise PermissionDeniedError if not allowed
+        access_guard_enforcer.require_permission(user, "resource1", "read")
+    except PermissionDeniedError as e:
+        raise HTTPException(status_code=403, detail=str(e))
 ```
+OR
+```python
+has_access = access_guard_enforcer.has_permission(user, "resource1", "read")
+```
+
+## Adapters
+
+Currently supported loaders:
+- PolicyDbLoader (Database)
+- PolicyApiLoader (Remote API)
+
