@@ -7,6 +7,7 @@ from sqlalchemy import text
 from sqlalchemy.orm import sessionmaker
 
 from .entities import Role, User
+from .load_policy_result import LoadPolicyResult
 from .poicy_query_provider import PolicyQueryProvider
 from .policy_loader_abc import PolicyLoaderABC
 
@@ -48,6 +49,8 @@ class PolicyDbLoader(PolicyLoaderABC):
             query, params = self.query_provider.get_all_policies_query()
 
         self._run_load_policy(query, params, model)
+
+        return LoadPolicyResult()
 
     def _run_load_policy(self, query: str, params: dict, model: Model) -> None:
         """

@@ -4,6 +4,7 @@ import requests
 from casbin import persist
 from casbin.model import Model
 
+from .load_policy_result import LoadPolicyResult
 from .policy_loader_abc import PolicyLoaderABC
 
 logger = logging.getLogger(__name__)
@@ -25,7 +26,7 @@ class PolicyApiLoader(PolicyLoaderABC):
     def set_filtered(self, is_filtered: bool = True):
         self._is_filtered = is_filtered
 
-    def load_policy(self, model: Model) -> None:
+    def load_policy(self, model: Model) -> LoadPolicyResult:
 
         self.set_filtered(True)
 
@@ -42,18 +43,25 @@ class PolicyApiLoader(PolicyLoaderABC):
             url = f"{self.api_url}/iam/policies"
             response = requests.get(url, headers=headers)
             response.raise_for_status()
-            policies = response.json()
+            data = response.json()
+            if "policies" not in data or not isinstance(data["policies"], list):
+                raise ValueError(f"Invalid policies response from {url}")
+
+            for entry in data["policies"]:
+                parts = [entry["ptype"], entry["subject"], entry["object"]]
+                if entry.get("action") is not None:
+                    parts.append(entry["action"])
+                if entry.get("effect") is not None:
+                    parts.append(entry["effect"])
+                policy_line = ", ".join(parts)
+                logger.debug(f"Loading policy rule: {policy_line}")
+                persist.load_policy_line(policy_line, model)
+
+            return LoadPolicyResult(resource_prefix=data.get("resource_prefix", ""))
+
         except Exception as e:
             logger.error(f"Failed to fetch policies from {url}: {e}")
             raise
 
-        for entry in policies:
-            parts = [entry["ptype"], entry["subject"], entry["object"]]
-            if entry.get("action") is not None:
-                parts.append(entry["action"])
-            if entry.get("effect") is not None:
-                parts.append(entry["effect"])
-            policy_line = ", ".join(parts)
-            logger.debug(f"Loading policy rule: {policy_line}")
-            persist.load_policy_line(policy_line, model)
+
 

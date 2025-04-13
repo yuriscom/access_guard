@@ -3,6 +3,9 @@ from abc import ABC, abstractmethod
 from casbin.model import Model
 from casbin.persist import Adapter
 
+from access_guard.authz.load_policy_result import LoadPolicyResult
+
+
 class PolicyLoaderABC(Adapter, ABC):
     def __init__(self):
         self._is_filtered = False
@@ -14,5 +17,5 @@ class PolicyLoaderABC(Adapter, ABC):
         self._is_filtered = is_filtered
 
     @abstractmethod
-    def load_policy(self, model: Model) -> None:
+    def load_policy(self, model: Model, filter: dict = None) -> LoadPolicyResult:
         pass

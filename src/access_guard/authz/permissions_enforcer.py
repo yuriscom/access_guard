@@ -7,6 +7,7 @@ import casbin
 from casbin import Model
 
 from access_guard.authz.entities import User
+from access_guard.authz.load_policy_result import LoadPolicyResult
 from access_guard.authz.poicy_query_provider import PolicyQueryProvider
 from access_guard.authz.policy_loader_factory import get_policy_loader
 from access_guard.authz.exceptions import PermissionDeniedError
@@ -24,6 +25,7 @@ class PermissionsEnforcer:
         self._engine = engine
         self._query_provider = query_provider
         self._params = params
+        self._resource_prefix = ""
         self._initialize_enforcer()
 
     @classmethod
@@ -45,28 +47,31 @@ class PermissionsEnforcer:
         loader.set_filtered(True)
         self._enforcer = casbin.Enforcer(model, loader)
         if self._params.filter:
-            self._enforcer.adapter.load_policy(model, filter=self._params.filter)
+            result: LoadPolicyResult = self._enforcer.adapter.load_policy(model, filter=self._params.filter)
         else:
-            self._enforcer.adapter.load_policy(model)
+            result: LoadPolicyResult = self._enforcer.adapter.load_policy(model)
 
+        self._resource_prefix = result.resource_prefix or ""
+        self._enforcer.build_role_links()
         self._model = model
-
-    # def _qualify(self, name: str, is_role_or_resource: bool = True) -> str:
-    #     if not name:
-    #         return name
-    #     if is_role_or_resource and self._params.scope and self._params.app_id:
-    #         return f"{self._params.scope}:{self._params.app_id}:{name}"
-    #     return name
 
     def has_permission(self, user: User, resource: str, actions: Union[str, List[str]]) -> bool:
         if isinstance(actions, str):
             actions = [actions]
 
-        # qualified_resource = self._qualify(resource, is_role_or_resource=True)
+        qualified_resource = f"{self._resource_prefix}{resource}" if self._resource_prefix else resource
 
-        return any(self._enforcer.enforce(str(user.id), resource, action) for action in actions)
+        logger.debug(
+            f"Enforcing for user: {user.id}, resource: {resource}, actions: {actions}, qualified_resource: {qualified_resource}")
+
+        for sec in ["p", "g"]:
+            for ptype, ast in self._model.model.get(sec, {}).items():
+                for rule in ast.policy:
+                    logger.debug(f"Loaded policy [{sec}] {ptype}: {rule}")
+
+        return any(self._enforcer.enforce(str(user.id), qualified_resource, action) for action in actions)
 
     def require_permission(self, user: User, resource: str, actions: Union[str, List[str]]) -> None:
         if not self.has_permission(user, resource, actions):
             actions_str = ", ".join(actions if isinstance(actions, list) else [actions])
-            raise PermissionDeniedError(user.id, resource, actions_str)
+            raise PermissionDeniedError(str(user.id), resource, actions_str)
