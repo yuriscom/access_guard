@@ -4,7 +4,7 @@ from typing import List, Union, Optional, ClassVar, Callable, Tuple
 
 import casbin
 from casbin import Model
-from casbin.util import key_match2
+from casbin.util import key_match2, key_match3
 
 from access_guard.authz.exceptions import PermissionDeniedError
 from access_guard.authz.models.entities import User
@@ -63,6 +63,7 @@ class PermissionsEnforcer:
 
         # Register key_match2 for wildcard resource matching
         self._enforcer.add_function("key_match2", key_match2)
+        self._enforcer.add_function("key_match3", key_match3)
 
 
         if self._params.filter:
