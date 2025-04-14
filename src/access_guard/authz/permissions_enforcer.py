@@ -1,13 +1,14 @@
-
 import logging
 from pathlib import Path
-from typing import List, Union, Optional, ClassVar
+from typing import List, Union, Optional, ClassVar, Callable, Tuple
 
 import casbin
 from casbin import Model
+from casbin.util import key_match2
 
 from access_guard.authz.exceptions import PermissionDeniedError
 from access_guard.authz.models.entities import User
+from access_guard.authz.models.enums import PolicyLoaderType
 from access_guard.authz.models.load_policy_result import LoadPolicyResult
 from access_guard.authz.models.permissions_enforcer_params import PermissionsEnforcerParams
 from access_guard.authz.loaders.poicy_query_provider import PolicyQueryProvider
@@ -21,17 +22,30 @@ DEFAULT_MODEL_PATH = Path(__file__).parent / "config" / "rbac_model.conf"
 class PermissionsEnforcer:
     _instance: ClassVar[Optional["PermissionsEnforcer"]] = None
 
-    def __init__(self, params: PermissionsEnforcerParams, engine=None, query_provider: PolicyQueryProvider = None):
+    def __init__(
+            self,
+            params: PermissionsEnforcerParams,
+            engine=None,
+            query_provider: PolicyQueryProvider = None,
+            synthetic_policy_provider: Optional[Callable[[], List[Tuple[str, str, str]]]] = None,
+    ):
         self._engine = engine
         self._query_provider = query_provider
         self._params = params
         self._resource_prefix = ""
+        self._synthetic_policy_provider = synthetic_policy_provider
         self._initialize_enforcer()
 
     @classmethod
-    def get_instance(cls, params, engine=None, query_provider: PolicyQueryProvider = None) -> "PermissionsEnforcer":
+    def get_instance(
+            cls,
+            params,
+            engine=None,
+            query_provider: PolicyQueryProvider = None,
+            synthetic_policy_provider: Optional[Callable[[], List[Tuple[str, str, str]]]] = None,
+    ) -> "PermissionsEnforcer":
         if cls._instance is None:
-            cls._instance = cls(params, engine, query_provider)
+            cls._instance = cls(params, engine, query_provider, synthetic_policy_provider)
         return cls._instance
 
     def _initialize_enforcer(self):
@@ -46,12 +60,24 @@ class PermissionsEnforcer:
         loader = get_policy_loader(self._params, self._engine, self._query_provider)
         loader.set_filtered(True)
         self._enforcer = casbin.Enforcer(model, loader)
+
+        # Register key_match2 for wildcard resource matching
+        self._enforcer.add_function("key_match2", key_match2)
+
+
         if self._params.filter:
             result: LoadPolicyResult = self._enforcer.adapter.load_policy(model, filter=self._params.filter)
         else:
             result: LoadPolicyResult = self._enforcer.adapter.load_policy(model)
 
         self._resource_prefix = result.resource_prefix or ""
+
+        if self._synthetic_policy_provider:
+            synthetic_loader = get_policy_loader(
+                PermissionsEnforcerParams(policy_loader_type=PolicyLoaderType.SYNTHETIC),
+                policy_provider = self._synthetic_policy_provider)
+            synthetic_loader.load_policy(model)
+
         self._enforcer.build_role_links()
         self._model = model
 
