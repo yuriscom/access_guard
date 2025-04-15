@@ -10,4 +10,4 @@ class Role:
 @dataclass
 class User:
     id: int
-    email: Optional[str] = None  # or any other helpful field
+    name: Optional[str] = None  # or any other helpful field

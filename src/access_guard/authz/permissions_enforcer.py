@@ -28,12 +28,14 @@ class PermissionsEnforcer:
             engine=None,
             query_provider: PolicyQueryProvider = None,
             synthetic_policy_provider: Optional[Callable[[], List[Tuple[str, str, str]]]] = None,
+            skip_initial_policy_load: bool = False
     ):
         self._engine = engine
         self._query_provider = query_provider
         self._params = params
         self._resource_prefix = ""
         self._synthetic_policy_provider = synthetic_policy_provider
+        self._skip_initial_policy_load = skip_initial_policy_load
         self._initialize_enforcer()
 
     @classmethod
@@ -43,6 +45,7 @@ class PermissionsEnforcer:
             engine=None,
             query_provider: PolicyQueryProvider = None,
             synthetic_policy_provider: Optional[Callable[[], List[Tuple[str, str, str]]]] = None,
+            skip_initial_policy_load: bool = False
     ) -> "PermissionsEnforcer":
         if cls._instance is None:
             cls._instance = cls(params, engine, query_provider, synthetic_policy_provider)
@@ -65,19 +68,19 @@ class PermissionsEnforcer:
         self._enforcer.add_function("key_match2", key_match2)
         self._enforcer.add_function("key_match3", key_match3)
 
+        if not self._skip_initial_policy_load:
+            if self._params.filter:
+                result: LoadPolicyResult = self._enforcer.adapter.load_policy(model, filter=self._params.filter)
+            else:
+                result: LoadPolicyResult = self._enforcer.adapter.load_policy(model)
 
-        if self._params.filter:
-            result: LoadPolicyResult = self._enforcer.adapter.load_policy(model, filter=self._params.filter)
-        else:
-            result: LoadPolicyResult = self._enforcer.adapter.load_policy(model)
+            self._resource_prefix = result.resource_prefix or ""
 
-        self._resource_prefix = result.resource_prefix or ""
-
-        if self._synthetic_policy_provider:
-            synthetic_loader = get_policy_loader(
-                PermissionsEnforcerParams(policy_loader_type=PolicyLoaderType.SYNTHETIC),
-                policy_provider = self._synthetic_policy_provider)
-            synthetic_loader.load_policy(model)
+            if self._synthetic_policy_provider:
+                synthetic_loader = get_policy_loader(
+                    PermissionsEnforcerParams(policy_loader_type=PolicyLoaderType.SYNTHETIC),
+                    policy_provider = self._synthetic_policy_provider)
+                synthetic_loader.load_policy(model)
 
         self._enforcer.build_role_links()
         self._model = model

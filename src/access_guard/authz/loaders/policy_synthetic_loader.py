@@ -3,6 +3,7 @@ from typing import Callable, List, Tuple
 
 from casbin import Model, persist
 from access_guard.authz.loaders.policy_loader_abc import PolicyLoaderABC
+from access_guard.authz.models.load_policy_result import LoadPolicyResult
 
 logger = logging.getLogger(__name__)
 
@@ -17,6 +18,11 @@ class PolicySyntheticLoader(PolicyLoaderABC):
             policy_line = ", ".join(entry)
             logger.debug(f"Loading synthetic policy rule: {policy_line}")
             persist.load_policy_line(policy_line, model)
+
+        return LoadPolicyResult(
+            resource_prefix="",  # Synthetic policies don't set a resource_prefix
+            policies=entries
+        )
 
     def save_policy(self, model: Model):
         raise NotImplementedError("SyntheticPolicyLoader does not support saving policies.")

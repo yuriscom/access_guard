@@ -1,5 +1,5 @@
 import logging
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Tuple
 
 from casbin import persist
 from casbin.model import Model
@@ -48,14 +48,18 @@ class PolicyDbLoader(PolicyLoaderABC):
             logger.debug("Loading all policies...")
             query, params = self.query_provider.get_all_policies_query()
 
-        self._run_load_policy(query, params, model)
+        policies = self._run_load_policy(query, params, model)
 
-        return LoadPolicyResult()
+        return LoadPolicyResult(
+            resource_prefix=None,
+            policies=policies
+        )
 
-    def _run_load_policy(self, query: str, params: dict, model: Model) -> None:
+    def _run_load_policy(self, query: str, params: dict, model: Model) -> List[Tuple[str, ...]]:
         """
         Private method to execute the query and load policies into the Casbin model.
         """
+        loaded_policies = []
         session = self.Session()
         try:
             result = session.execute(text(query), params)
@@ -69,12 +73,16 @@ class PolicyDbLoader(PolicyLoaderABC):
                     logger.warning(f"Unknown policy type: {row.ptype}")
                     continue
                 logger.debug(f"Loading policy rule: {line}")
+                row_tuple = tuple(str(item) for item in row if item is not None)
+                loaded_policies.append(row_tuple)
                 persist.load_policy_line(line, model)
         except Exception as e:
             logger.error(f"Error loading policies: {e}")
             logger.exception(e)  # This will print the full stack trace
         finally:
             session.close()
+
+        return loaded_policies
 
     def save_policy(self, model: Model) -> bool:
         """Save policy to database."""
