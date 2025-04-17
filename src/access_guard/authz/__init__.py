@@ -1,1 +1,1 @@
-from .factory import get_permissions_enforcer
+from access_guard.authz.factory import get_permissions_enforcer
