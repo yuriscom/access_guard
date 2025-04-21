@@ -34,8 +34,8 @@ class PolicyApiLoader(PolicyLoaderABC):
         headers = {
             # "Authorization": f"Bearer {self.api_token}",
             "Accept": "application/json",
-            "app_id": "1",
-            "user_id": "3",
+            "app_id": "9e43b935-d443-4505-aaea-4d02dc7ba667",
+            "user_id": "a2c49b9a-d36b-499d-adce-bb1196b353d2",
             "scope": "APP"
         }
 
