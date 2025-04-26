@@ -35,10 +35,10 @@ class PolicyDbLoader(PolicyLoaderABC):
         if entity:
             if isinstance(entity, User):
                 logger.debug(f"Loading policies for User: {entity.id}")
-                query, params = self.query_provider.get_user_policy_query(entity.id)
+                query, params = self.query_provider.get_user_policies_query(entity.id)
             elif isinstance(entity, Role):
                 logger.debug(f"Loading policies for Role: {entity.role_name}")
-                query, params = self.query_provider.get_role_policy_query(entity.id)
+                query, params = self.query_provider.get_role_policies_query(entity.id)
             else:
                 logger.warning(f"Unsupported subject type: {entity.__class__.__name__}")
                 return

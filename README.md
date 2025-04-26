@@ -1,4 +1,3 @@
-
 # Access Guard
 
 A framework-agnostic IAM library with Casbin-based permission enforcer.
@@ -107,4 +106,4 @@ has_access = access_guard_enforcer.has_permission(user, "resource1", "read")
 Currently supported loaders:
 - PolicyDbLoader (Database)
 - PolicyApiLoader (Remote API)
-
+- PolicySyntheticLoader (Synthetically generated policies)

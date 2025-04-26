@@ -11,9 +11,9 @@ class PolicyQueryProvider(ABC):
         pass
 
     @abstractmethod
-    def get_user_policy_query(self, user_id: str) -> tuple[str, dict]:
+    def get_user_policies_query(self, user_id: str) -> tuple[str, dict]:
         pass
 
     @abstractmethod
-    def get_role_policy_query(self, role_id: str) -> tuple[str, dict]:
+    def get_role_policies_query(self, role_id: str) -> tuple[str, dict]:
         pass

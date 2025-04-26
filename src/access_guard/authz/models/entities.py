@@ -9,5 +9,4 @@ class Role:
 
 @dataclass
 class User:
-    id: int
-    name: Optional[str] = None  # or any other helpful field
+    id: str
