@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
 
+from access_guard.authz.loaders.policy_provider_abc import PolicyProvider
 
-class PolicyQueryProvider(ABC):
+
+class PolicyQueryProvider(PolicyProvider):
     @abstractmethod
     def get_all_policies_query(self) -> tuple[str, dict]:
         pass

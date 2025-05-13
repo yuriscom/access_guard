@@ -26,7 +26,7 @@ class PolicyApiLoader(PolicyLoaderABC):
     def set_filtered(self, is_filtered: bool = True):
         self._is_filtered = is_filtered
 
-    def load_policy(self, model: Model) -> LoadPolicyResult:
+    def load_policy(self, model: Model, filter: dict = None) -> LoadPolicyResult:
 
         self.set_filtered(True)
 
@@ -34,8 +34,12 @@ class PolicyApiLoader(PolicyLoaderABC):
         headers = {
             # "Authorization": f"Bearer {self.api_token}",
             "Accept": "application/json",
-            "app_id": "9e43b935-d443-4505-aaea-4d02dc7ba667",
-            "user_id": "a2c49b9a-d36b-499d-adce-bb1196b353d2",
+            #cue:
+            # "app_id": "9e43b935-d443-4505-aaea-4d02dc7ba667",
+            # "user_id": "a2c49b9a-d36b-499d-adce-bb1196b353d2",
+            #meldai:
+            "app_id": "4cf8e948-0ce4-4f99-a43f-592dabd7fb82",
+            "user_id": "25096e51-c006-41f3-8824-7f0a3a3870fb",
             "scope": "APP"
         }
 

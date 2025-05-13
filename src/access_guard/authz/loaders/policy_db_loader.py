@@ -11,12 +11,11 @@ from access_guard.authz.models.load_policy_result import LoadPolicyResult
 from access_guard.authz.loaders.poicy_query_provider import PolicyQueryProvider
 from access_guard.authz.loaders.policy_loader_abc import PolicyLoaderABC
 
-logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
 
 class PolicyDbLoader(PolicyLoaderABC):
-    def __init__(self, engine, query_provider: PolicyQueryProvider):
+    def __init__(self, query_provider: PolicyQueryProvider, engine):
         super().__init__()
         self.engine = engine
         self.Session = sessionmaker(bind=engine)
@@ -51,7 +50,7 @@ class PolicyDbLoader(PolicyLoaderABC):
         policies = self._run_load_policy(query, params, model)
 
         return LoadPolicyResult(
-            resource_prefix=None,
+            resource_prefix=None, # todo: see if needed here
             policies=policies
         )
 
@@ -78,7 +77,7 @@ class PolicyDbLoader(PolicyLoaderABC):
                 persist.load_policy_line(line, model)
         except Exception as e:
             logger.error(f"Error loading policies: {e}")
-            logger.exception(e)  # This will print the full stack trace
+            logger.exception(e)
         finally:
             session.close()
 

@@ -1,18 +1,16 @@
 import logging
 from pathlib import Path
-from typing import List, Union, Optional, ClassVar, Callable, Tuple
+from typing import List, Union, Optional, ClassVar
 
 import casbin
-from casbin import Model
-from casbin.util import key_match2, key_match3
-
 from access_guard.authz.exceptions import PermissionDeniedError
+from access_guard.authz.loaders.multi_adapter import MultiAdapter
+from access_guard.authz.loaders.policy_provider_abc import PolicyProvider
 from access_guard.authz.models.entities import User
-from access_guard.authz.models.enums import PolicyLoaderType
 from access_guard.authz.models.load_policy_result import LoadPolicyResult
 from access_guard.authz.models.permissions_enforcer_params import PermissionsEnforcerParams
-from access_guard.authz.loaders.poicy_query_provider import PolicyQueryProvider
-from access_guard.authz.loaders.policy_loader_factory import get_policy_loader
+from casbin import Model
+from casbin.util import key_match2, key_match3
 
 logger = logging.getLogger(__name__)
 
@@ -25,35 +23,27 @@ class PermissionsEnforcer:
     def __init__(
             self,
             params: PermissionsEnforcerParams,
-            engine=None,
-            query_provider: PolicyQueryProvider = None,
-            synthetic_policy_provider: Optional[Callable[[], List[Tuple[str, str, str]]]] = None,
+            policy_loaders: List[PolicyProvider],
             skip_initial_policy_load: bool = False
     ):
-        self._engine = engine
-        self._query_provider = query_provider
         self._params = params
-        self._loader = None
         self._resource_prefix = ""
-        self._synthetic_policy_provider = synthetic_policy_provider
         self._skip_initial_policy_load = skip_initial_policy_load
+        self._policy_loaders = policy_loaders
+        self._adapter = MultiAdapter(self._policy_loaders)
         self._initialize_enforcer()
 
     @classmethod
     def get_instance(
             cls,
             params,
-            engine=None,
-            query_provider: PolicyQueryProvider = None,
-            synthetic_policy_provider: Optional[Callable[[], List[Tuple[str, str, str]]]] = None,
+            policy_loaders: List[PolicyProvider],
             skip_initial_policy_load: bool = False
     ) -> "PermissionsEnforcer":
         if cls._instance is None:
             cls._instance = cls(
                 params,
-                engine,
-                query_provider,
-                synthetic_policy_provider,
+                policy_loaders,
                 skip_initial_policy_load)
         return cls._instance
 
@@ -65,39 +55,33 @@ class PermissionsEnforcer:
             else DEFAULT_MODEL_PATH
         )
         model.load_model(model_path)
+        self._model = model
 
-        self._loader = get_policy_loader(self._params, self._engine, self._query_provider)
-        self._loader.set_filtered(True)
-        self._enforcer = casbin.Enforcer(model, self._loader)
+        # need filtered flag here for casbin to not load the policies automatically. We will trigger them later
+        self._adapter.set_filtered(True)
+        self._enforcer = casbin.Enforcer(self._model, self._adapter)
 
-        # Register key_match2 for wildcard resource matching
+        # Register key_match functions for wildcard resource matching
         self._enforcer.add_function("key_match2", key_match2)
         self._enforcer.add_function("key_match3", key_match3)
 
         if not self._skip_initial_policy_load:
-            self._load_policies(model)
+            self._load_policies()
 
         self._enforcer.build_role_links()
-        self._model = model
 
-    def _load_policies(self, model: Model) -> None:
-        """
-        Loads all policies (DB/API + Synthetic) into provided model.
-        Updates resource_prefix.
-        """
-        if self._params.filter:
-            result: LoadPolicyResult = self._loader.load_policy(model, filter=self._params.filter)
-        else:
-            result: LoadPolicyResult = self._loader.load_policy(model)
+    def _load_policies(self) -> None:
+        # self._adapter.load_policy(self._model, filter=self._params.filter)
 
-        self._resource_prefix = result.resource_prefix or ""
+        for loader in self._policy_loaders:
+            result: LoadPolicyResult = loader.load_policy(self._model, filter=self._params.filter)
+            # todo: right now only applying the first resource_prefix.
+            #  update _resource_prefix to be list
+            if result.resource_prefix and not self._resource_prefix:
+                self._resource_prefix = result.resource_prefix
 
-        if self._synthetic_policy_provider:
-            synthetic_loader = get_policy_loader(
-                PermissionsEnforcerParams(policy_loader_type=PolicyLoaderType.SYNTHETIC),
-                policy_provider=self._synthetic_policy_provider
-            )
-            synthetic_loader.load_policy(model)
+        self._enforcer.build_role_links()
+        # self.log_loaded_policies()
 
     def has_permission(self, user: User, resource: str, actions: Union[str, List[str]]) -> bool:
         if isinstance(actions, str):
@@ -114,5 +98,11 @@ class PermissionsEnforcer:
 
     def refresh_policies(self):
         self._enforcer.clear_policy()
-        self._load_policies(self._model)
+        self._load_policies()
         self._enforcer.build_role_links()
+
+    def log_loaded_policies(self):
+        for sec in self._model.model:
+            for ptype in self._model.model[sec]:
+                for rule in self._model.model[sec][ptype].policy:
+                    logger.debug(f"Loaded policy rule: {ptype}, {', '.join(rule)}")

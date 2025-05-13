@@ -1,27 +1,28 @@
-from typing import Callable, List, Tuple
+from typing import Callable, List, Tuple, Optional
 
+from access_guard.authz.loaders.policy_loader_abc import PolicyLoaderABC
+from access_guard.authz.loaders.policy_provider_abc import PolicyProvider
 from access_guard.authz.permissions_enforcer import PermissionsEnforcer
 from access_guard.authz.models.permissions_enforcer_params import PermissionsEnforcerParams
 from access_guard.authz.loaders.poicy_query_provider import PolicyQueryProvider
 
 
-def _build_params(settings) -> PermissionsEnforcerParams:
+def _build_params(settings, rbac_model_path: Optional[str] = None) -> PermissionsEnforcerParams:
     return PermissionsEnforcerParams(
-        policy_loader_type=settings.policy_loader_type,
-        rbac_model_path=getattr(settings, "rbac_model_path", None),
-        policy_api_url=getattr(settings, "policy_api_url", None),
-        policy_api_client=getattr(settings, "policy_api_client", None),
-        policy_api_secret=getattr(settings, "policy_api_secret", None),
+        # policy_loader_type=settings.policy_loader_type,
+        rbac_model_path=rbac_model_path,
+        # policy_api_url=getattr(settings, "policy_api_url", None),
+        # policy_api_client=getattr(settings, "policy_api_client", None),
+        # policy_api_secret=getattr(settings, "policy_api_secret", None),
         filter=getattr(settings, "filter", None),  # fully agnostic filter dict
     )
 
 
 def get_permissions_enforcer(
         settings=None,
-        engine=None,
+        rbac_model_path: Optional[str] = None,
+        policy_loaders: Optional[List[PolicyLoaderABC]] = [],
         new_instance: bool = False,
-        query_provider: PolicyQueryProvider = None,
-        synthetic_policy_provider: Callable[[], List[Tuple[str, ...]]] = None,
         skip_initial_policy_load: bool = False
 ) -> PermissionsEnforcer:
     """
@@ -50,21 +51,17 @@ def get_permissions_enforcer(
             PermissionsEnforcer: A fully initialized or reusable enforcer instance,
                                  depending on the configuration.
         """
-    params = _build_params(settings)
+    params = _build_params(settings, rbac_model_path)
 
     if new_instance:
         return PermissionsEnforcer(
             params,
-            engine,
-            query_provider=query_provider,
-            synthetic_policy_provider=synthetic_policy_provider,
-            skip_initial_policy_load = skip_initial_policy_load
+            policy_loaders,
+            skip_initial_policy_load=skip_initial_policy_load
         )
 
     return PermissionsEnforcer.get_instance(
         params,
-        engine,
-        query_provider=query_provider,
-        synthetic_policy_provider=synthetic_policy_provider,
-        skip_initial_policy_load = skip_initial_policy_load
+        policy_loaders,
+        skip_initial_policy_load=skip_initial_policy_load
     )
